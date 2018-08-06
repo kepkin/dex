@@ -444,6 +444,42 @@ func toStoragePassword(p Password) storage.Password {
 	}
 }
 
+// TotpSecret is a mirrored struct from the stroage with JSON struct tags and
+// Kubernetes type metadata.
+type TotpSecret struct {
+	k8sapi.TypeMeta   `json:",inline"`
+	k8sapi.ObjectMeta `json:"metadata,omitempty"`
+
+	// The Kubernetes name is actually an encoded version of this value.
+	//
+	// This field is IMMUTABLE. Do not change.
+	Email  string `json:"email,omitempty"`
+	Secret string `json:"secret,omitempty"`
+}
+
+func (cli *client) fromStorageTotpSecret(p storage.TotpSecret) TotpSecret {
+	email := strings.ToLower(p.Email)
+	return TotpSecret{
+		TypeMeta: k8sapi.TypeMeta{
+			Kind:       kindTotp,
+			APIVersion: cli.apiVersion,
+		},
+		ObjectMeta: k8sapi.ObjectMeta{
+			Name:      cli.idToName(email),
+			Namespace: cli.namespace,
+		},
+		Email:    email,
+		Secret:   p.Secret,
+	}
+}
+
+func toStorageTotpSecret(p TotpSecret) storage.TotpSecret {
+	return storage.TotpSecret{
+		Email:    p.Email,
+		Secret:   p.Secret,
+	}
+}
+
 // AuthCode is a mirrored struct from storage with JSON struct tags and
 // Kubernetes type metadata.
 type AuthCode struct {
