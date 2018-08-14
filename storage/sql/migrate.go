@@ -164,6 +164,9 @@ var migrations = []migration{
 				add column created_at timestamptz not null default '0001-01-01 00:00:00 UTC';
 			alter table refresh_token
 				add column last_used timestamptz not null default '0001-01-01 00:00:00 UTC';
+			alter table refresh_token
+				add column access_token text;
+			CREATE UNIQUE INDEX refresh_token_access_token_uq ON refresh_token(access_token);
 		`,
 	},
 	{

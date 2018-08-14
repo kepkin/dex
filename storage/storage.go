@@ -62,6 +62,7 @@ type Storage interface {
 	GetClient(id string) (Client, error)
 	GetKeys() (Keys, error)
 	GetRefresh(id string) (RefreshToken, error)
+	GetRefreshByAccessToken(id string) (RefreshToken, error)
 	GetPassword(email string) (Password, error)
 	GetOfflineSessions(userID string, connID string) (OfflineSessions, error)
 	GetConnector(id string) (Connector, error)
@@ -228,6 +229,8 @@ type RefreshToken struct {
 	//
 	// May be empty.
 	Token string
+
+	AccessToken string
 
 	CreatedAt time.Time
 	LastUsed  time.Time

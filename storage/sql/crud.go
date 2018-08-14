@@ -255,15 +255,15 @@ func (c *conn) CreateRefresh(r storage.RefreshToken) error {
 			claims_user_id, claims_username, claims_email, claims_email_verified,
 			claims_groups,
 			connector_id, connector_data,
-			token, created_at, last_used
+			token, access_token, created_at, last_used
 		)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
 	`,
 		r.ID, r.ClientID, encoder(r.Scopes), r.Nonce,
 		r.Claims.UserID, r.Claims.Username, r.Claims.Email, r.Claims.EmailVerified,
 		encoder(r.Claims.Groups),
 		r.ConnectorID, r.ConnectorData,
-		r.Token, r.CreatedAt, r.LastUsed,
+		r.Token, r.AccessToken, r.CreatedAt, r.LastUsed,
 	)
 	if err != nil {
 		if c.alreadyExistsCheck(err) {
@@ -297,16 +297,17 @@ func (c *conn) UpdateRefreshToken(id string, updater func(old storage.RefreshTok
 				connector_id = $9,
 				connector_data = $10,
 				token = $11,
-				created_at = $12,
-				last_used = $13
+				access_token = $12,
+				created_at = $13,
+				last_used = $14
 			where
-				id = $14
+				id = $15
 		`,
 			r.ClientID, encoder(r.Scopes), r.Nonce,
 			r.Claims.UserID, r.Claims.Username, r.Claims.Email, r.Claims.EmailVerified,
 			encoder(r.Claims.Groups),
 			r.ConnectorID, r.ConnectorData,
-			r.Token, r.CreatedAt, r.LastUsed, id,
+			r.Token, r.AccessToken, r.CreatedAt, r.LastUsed, id,
 		)
 		if err != nil {
 			return fmt.Errorf("update refresh token: %v", err)
@@ -317,6 +318,18 @@ func (c *conn) UpdateRefreshToken(id string, updater func(old storage.RefreshTok
 
 func (c *conn) GetRefresh(id string) (storage.RefreshToken, error) {
 	return getRefresh(c, id)
+}
+
+func (c *conn) GetRefreshByAccessToken(id string) (storage.RefreshToken, error) {
+	return scanRefresh(c.QueryRow(`
+		select
+			id, client_id, scopes, nonce,
+			claims_user_id, claims_username, claims_email, claims_email_verified,
+			claims_groups,
+			connector_id, connector_data,
+			token, created_at, last_used
+		from refresh_token where access_token = $1;
+	`, id))
 }
 
 func getRefresh(q querier, id string) (storage.RefreshToken, error) {

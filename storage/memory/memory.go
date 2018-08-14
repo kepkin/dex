@@ -213,6 +213,11 @@ func (s *memStorage) GetRefresh(id string) (tok storage.RefreshToken, err error)
 	return
 }
 
+func (cli *memStorage) GetRefreshByAccessToken(id string) (r storage.RefreshToken, err error) {
+	panic("not implemented")
+}
+
+
 func (s *memStorage) GetAuthRequest(id string) (req storage.AuthRequest, err error) {
 	s.tx(func() {
 		var ok bool

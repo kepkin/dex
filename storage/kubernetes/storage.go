@@ -326,6 +326,10 @@ func (cli *client) getRefreshToken(id string) (r RefreshToken, err error) {
 	return
 }
 
+func (cli *client) GetRefreshByAccessToken(id string) (r storage.RefreshToken, err error) {
+	panic("not implemented")
+}
+
 func (cli *client) GetOfflineSessions(userID string, connID string) (storage.OfflineSessions, error) {
 	o, err := cli.getOfflineSessions(userID, connID)
 	if err != nil {

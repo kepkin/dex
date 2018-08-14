@@ -149,6 +149,10 @@ func (c *conn) GetRefresh(id string) (r storage.RefreshToken, err error) {
 	return toStorageRefreshToken(token), nil
 }
 
+func (c *conn) GetRefreshByAccessToken(id string) (r storage.RefreshToken, err error) {
+	panic("lala")
+}
+
 func (c *conn) UpdateRefreshToken(id string, updater func(old storage.RefreshToken) (storage.RefreshToken, error)) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultStorageTimeout)
 	defer cancel()

@@ -95,6 +95,7 @@ type discovery struct {
 	Auth          string   `json:"authorization_endpoint"`
 	Token         string   `json:"token_endpoint"`
 	Keys          string   `json:"jwks_uri"`
+	UserInfo      string   `json:"userinfo_endpoint"`
 	ResponseTypes []string `json:"response_types_supported"`
 	Subjects      []string `json:"subject_types_supported"`
 	IDTokenAlgs   []string `json:"id_token_signing_alg_values_supported"`
@@ -109,6 +110,7 @@ func (s *Server) discoveryHandler() (http.HandlerFunc, error) {
 		Auth:        s.absURL("/auth"),
 		Token:       s.absURL("/token"),
 		Keys:        s.absURL("/keys"),
+		UserInfo:    s.absURL("/userinfo"),
 		Subjects:    []string{"public"},
 		IDTokenAlgs: []string{string(jose.RS256)},
 		Scopes:      []string{"openid", "email", "groups", "profile", "offline_access"},
@@ -199,6 +201,62 @@ func (s *Server) handleAuthorization(w http.ResponseWriter, r *http.Request) {
 	if err := s.templates.login(w, connectorInfos); err != nil {
 		s.logger.Errorf("Server template error: %v", err)
 	}
+}
+
+func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
+    auth := strings.SplitN(r.Header["Authorization"][0], " ", 2)
+	authType := strings.ToLower(strings.TrimSpace(auth[0]))
+	access_token := strings.TrimSpace(auth[1])
+
+	if authType != "bearer" {
+		s.logger.Errorf("Failed to authorize, auth header is: %v", r.Header["Authorization"])
+		s.renderError(w, http.StatusInternalServerError, "Authorization required.")
+		return
+	}
+
+	refreshToken, err := s.storage.GetRefreshByAccessToken(access_token)
+	if err != nil {
+		s.logger.Errorf("Failed to get by access token: %v", err)
+		s.renderError(w, http.StatusInternalServerError, "Authorization required. Invalid access token.")
+		return
+	}
+
+	sub := &internal.IDTokenSubject{
+		UserId: refreshToken.Claims.UserID,
+		ConnId: refreshToken.ConnectorID,
+	}
+
+	subjectString, err := internal.Marshal(sub)
+	if err != nil {
+		s.logger.Errorf("failed to marshal offline session ID: %v", err)
+		panic("")
+	}
+
+	resp := struct {
+		Subject       string   `json:"sub"`
+		Email         string   `json:"email,omitempty"`
+		EmailVerified bool    `json:"email_verified,omitempty"`
+		Groups        []string `json:"groups,omitempty"`
+		Name          string   `json:"name,omitempty"`
+		UserName      string   `json:"preferred_username,omitempty"`
+	}{
+		subjectString,
+		refreshToken.Claims.Email,
+		refreshToken.Claims.EmailVerified,
+		refreshToken.Claims.Groups,
+		refreshToken.Claims.Username,
+		refreshToken.Claims.UserID,
+	}
+	
+	data, err := json.Marshal(resp)
+	if err != nil {
+		s.logger.Errorf("failed to marshal userinfo response: %v", err)
+		s.tokenErrHelper(w, errServerError, "", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.Write(data)
 }
 
 func (s *Server) handleConnectorLogin(w http.ResponseWriter, r *http.Request) {
@@ -694,6 +752,7 @@ func (s *Server) handleAuthCode(w http.ResponseWriter, r *http.Request, client s
 			if scope == scopeOfflineAccess {
 				return true
 			}
+			return true
 		}
 		return false
 	}()
@@ -702,6 +761,7 @@ func (s *Server) handleAuthCode(w http.ResponseWriter, r *http.Request, client s
 		refresh := storage.RefreshToken{
 			ID:            storage.NewID(),
 			Token:         storage.NewID(),
+			AccessToken:   accessToken,
 			ClientID:      authCode.ClientID,
 			ConnectorID:   authCode.ConnectorID,
 			Scopes:        authCode.Scopes,
@@ -943,6 +1003,7 @@ func (s *Server) handleRefreshToken(w http.ResponseWriter, r *http.Request, clie
 		old.Claims.Groups = ident.Groups
 		old.ConnectorData = ident.ConnectorData
 		old.LastUsed = lastUsed
+		old.AccessToken = accessToken
 		return old, nil
 	}
 
