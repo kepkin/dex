@@ -204,7 +204,7 @@ func (s *Server) handleAuthorization(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
-    auth := strings.SplitN(r.Header["Authorization"][0], " ", 2)
+	auth := strings.SplitN(r.Header["Authorization"][0], " ", 2)
 	authType := strings.ToLower(strings.TrimSpace(auth[0]))
 	access_token := strings.TrimSpace(auth[1])
 
@@ -235,7 +235,7 @@ func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 	resp := struct {
 		Subject       string   `json:"sub"`
 		Email         string   `json:"email,omitempty"`
-		EmailVerified bool    `json:"email_verified,omitempty"`
+		EmailVerified bool     `json:"email_verified,omitempty"`
 		Groups        []string `json:"groups,omitempty"`
 		Name          string   `json:"name,omitempty"`
 		UserName      string   `json:"preferred_username,omitempty"`
@@ -247,7 +247,7 @@ func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 		refreshToken.Claims.Username,
 		refreshToken.Claims.UserID,
 	}
-	
+
 	data, err := json.Marshal(resp)
 	if err != nil {
 		s.logger.Errorf("failed to marshal userinfo response: %v", err)
